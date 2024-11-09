@@ -125,7 +125,7 @@ const bookAppointment = async (req, res) => {
     const docData = await doctorModel.findById(docId).select("-password");
 
     // Check if the doctor is marked as available; if not, return an error response
-    if (!docData.available) {
+    if (!docData) {
       return res.json({ success: false, message: "Doctor not available" });
     }
 
