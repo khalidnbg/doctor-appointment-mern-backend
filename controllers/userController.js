@@ -2,6 +2,7 @@ import validator from "validator";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { v2 as cloudinary } from "cloudinary";
+import Stripe from "stripe";
 
 import userModel from "../models/userModel.js";
 import doctorModel from "../models/doctorModel.js";
@@ -230,6 +231,138 @@ const cancelAppointment = async (req, res) => {
   }
 };
 
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
+const paymentStripe = async (req, res) => {
+  try {
+    const { appointmentId } = req.body;
+
+    // Validate input
+    if (!appointmentId) {
+      return res.status(400).json({
+        success: false,
+        message: "Appointment ID is required.",
+      });
+    }
+
+    // Fetch appointment data
+    const appointmentData = await appointmentModel.findById(appointmentId);
+
+    // Check if appointment exists and is valid
+    if (!appointmentData || appointmentData.cancelled) {
+      return res.status(404).json({
+        success: false,
+        message: "Appointment not found or already cancelled.",
+      });
+    }
+
+    if (appointmentData.payment) {
+      return res.status(400).json({
+        success: false,
+        message: "Payment already completed for this appointment.",
+      });
+    }
+
+    // Check if the amount is valid
+    if (!appointmentData.amount || appointmentData.amount <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid appointment amount.",
+      });
+    }
+
+    // Create Stripe session
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ["card"],
+      line_items: [
+        {
+          price_data: {
+            currency: process.env.CURRENCY || "usd",
+            product_data: {
+              name: `Appointment Payment #${appointmentId}`,
+            },
+            unit_amount: Math.round(appointmentData.amount * 100), // Stripe expects amount in cents
+          },
+          quantity: 1,
+        },
+      ],
+      mode: "payment",
+      success_url: `http://localhost:5173/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `http://localhost:5173/cancel`,
+      metadata: {
+        appointmentId: appointmentId,
+      },
+    });
+
+    return res.status(200).json({
+      success: true,
+      sessionUrl: session.url,
+      sessionId: session.id,
+    });
+  } catch (error) {
+    console.error("Stripe error:", error.message);
+    res.status(500).json({ success: false, message: "Internal Server Error" });
+  }
+};
+
+// api to verify payment of stripe
+const verifyStripe = async (req, res) => {
+  try {
+    const { session_id } = req.body;
+
+    // Validate input
+    if (!session_id) {
+      return res.status(400).json({
+        success: false,
+        message: "Stripe session ID is required.",
+      });
+    }
+
+    // Fetch session details
+    const session = await stripe.checkout.sessions.retrieve(session_id);
+
+    if (session.payment_status === "paid") {
+      // Retrieve metadata containing the appointment ID
+      const appointmentId = session.metadata.appointmentId;
+
+      if (!appointmentId) {
+        return res.status(400).json({
+          success: false,
+          message: "Appointment ID not found in session metadata.",
+        });
+      }
+
+      // Update the appointment's payment status in the database
+      const updatedAppointment = await appointmentModel.findByIdAndUpdate(
+        appointmentId,
+        { payment: true },
+        { new: true } // Return the updated document
+      );
+
+      if (!updatedAppointment) {
+        return res.status(404).json({
+          success: false,
+          message: "Appointment not found for update.",
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: "Payment verified and updated.",
+        updatedAppointment,
+      });
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: "Payment verification failed or incomplete.",
+      });
+    }
+  } catch (error) {
+    console.error("Stripe verification error:", error.message);
+    res.status(500).json({ success: false, message: "Internal Server Error" });
+  }
+};
+
 export {
   registerUser,
   loginUser,
@@ -238,4 +371,6 @@ export {
   bookAppointment,
   listAppointment,
   cancelAppointment,
+  paymentStripe,
+  verifyStripe,
 };
