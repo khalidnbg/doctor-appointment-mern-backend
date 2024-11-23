@@ -1,22 +1,28 @@
 import jwt from "jsonwebtoken";
-
-// doctor authentication middleware
 const authDoctor = async (req, res, next) => {
   try {
-    // Get the dToken from headers
-    const { dToken } = req.headers;
-    if (!dToken) {
+    // Get the token from the Authorization header
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return res.json({
         success: false,
-        message: "Not authorized. Login again",
+        message: "Not authorized. Login again.",
       });
     }
 
-    // Verify the dToken and decode the email
-    const dTokenDecode = jwt.verify(dToken, process.env.JWT_SECRET);
+    // Extract the token from the Bearer header
+    const dToken = authHeader.split(" ")[1];
 
-    // get the doctor id from the dToken
-    console.log(dTokenDecode);
+    // Verify the token
+    const dTokenDecode = jwt.verify(dToken, process.env.JWT_SECRET);
+    if (!dTokenDecode) {
+      return res.json({
+        success: false,
+        message: "Invalid token. Login again.",
+      });
+    }
+
+    // Get the doctor ID from the decoded token
     req.body.docId = dTokenDecode.id;
 
     next();
