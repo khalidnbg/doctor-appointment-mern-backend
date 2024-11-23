@@ -51,32 +51,3 @@ const loginDoctor = async (req, res) => {
 };
 
 export { changeAvailability, doctorList, loginDoctor };
-
-name;
-("Dr. Richard James");
-email;
-("doc1@gmail.com");
-password;
-("$2b$10$cYSEot3RG1uBGpingg18tOml4ppYTTgwILBIKYcEHwiyRg0wMbEzG");
-image;
-("https://res.cloudinary.com/deqqp45mt/image/upload/v1730827935/mvxgwdxv…");
-speciality;
-("General physician");
-degree;
-("MBBS");
-experience;
-("4 Year");
-about;
-("Dr. Davis has a strong commitment to delivering comprehensive medical …");
-available;
-false;
-fees;
-60;
-
-address;
-Object;
-date;
-1730827946079;
-
-slots_booked;
-Object;
