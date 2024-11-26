@@ -71,9 +71,13 @@ const appointmentComplete = async (req, res) => {
     const appointmentData = await appointmentModel.findById(appointmentId);
 
     if (appointmentData && appointmentData.docId === docId) {
-      await appointmentModel.findOneAndUpdate(appointmentId, {
-        isCompleted: true,
-      });
+      await appointmentModel.findOneAndUpdate(
+        { _id: appointmentId },
+        {
+          isCompleted: true,
+        },
+        { new: true }
+      );
       return res.json({ success: true, message: "Appointment completed" });
     } else {
       return res.json({ success: false, message: "Mark failed" });
@@ -92,9 +96,12 @@ const appointmentCancel = async (req, res) => {
     const appointmentData = await appointmentModel.findById(appointmentId);
 
     if (appointmentData && appointmentData.docId === docId) {
-      await appointmentModel.findOneAndUpdate(appointmentId, {
-        cancelled: true,
-      });
+      await appointmentModel.findOneAndUpdate(
+        { _id: appointmentId },
+        {
+          cancelled: true,
+        }
+      );
       return res.json({ success: true, message: "Appointment cancelled" });
     } else {
       return res.json({ success: false, message: "Cancellation failed" });
