@@ -119,14 +119,13 @@ const updateProfile = async (req, res) => {
 // api to book appointment
 const bookAppointment = async (req, res) => {
   try {
-    // Destructure request body to extract userId, docId, slotDate, and slotTime
     const { userId, docId, slotDate, slotTime } = req.body;
 
     // Fetch doctor data by doctor ID, excluding password for security
     const docData = await doctorModel.findById(docId).select("-password");
 
-    // Check if the doctor is marked as available; if not, return an error response
-    if (!docData) {
+    // Check if the doctor exists and is marked as available
+    if (!docData || !docData.available) {
       return res.json({ success: false, message: "Doctor not available" });
     }
 
